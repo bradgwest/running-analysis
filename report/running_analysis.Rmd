@@ -109,12 +109,19 @@ for (cf in component_vs_composite_plots) {
 
 ```{r}
 # Get correlation between the normalized scores and non-normailzes scores
-
+ybt_running_sml <- ybt_running %>% 
+  dplyr::select(L.A.norm, R.A.norm, L.PM.norm, R.PM.norm, L.PL.norm, R.PL.norm, L.CS, R.CS)
+corrplot::corrplot(cor(ybt_running_sml), method = "number", type = "upper", tl.col = "black", tl.srt = 45)
 ```
 
 
-It appears there is a much stronger correlation between the posterior measurements and the composite y-balance score than there is between the anterior measurements and the composite y-balance score.
+There is a much stronger correlation between the posterior measurements and the composite y-balance score than there is between the anterior measurements and the composite y-balance score.
 
+```{r}
+# Standard deviations of the measurements
+apply(ybt_running_sml, 2, sd)
+# Means of the measurements
+apply(ybt_running_sml, 2, mean)
+```
 
-
-
+If we look at the individual variability of the measurements, we see that the standard deviation for the anterior measurements is half of that for the posterior measurements.
