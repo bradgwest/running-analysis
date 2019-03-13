@@ -125,3 +125,9 @@ apply(ybt_running_sml, 2, mean)
 ```
 
 If we look at the individual variability of the measurements, we see that the standard deviation for the anterior measurements is half of that for the posterior measurements.
+
+```{r}
+test <- ybt_running %>% 
+  dplyr::mutate(L_calculated_composite = (L.A.meters + L.PL.meters + L.PM.meters) / (3*L_leg_length))
+```
+
