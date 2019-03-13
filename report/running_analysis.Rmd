@@ -6,5 +6,115 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      cache = TRUE,
+                      fig.align = 'center')
+knitr::opts_knit$set(root.dir = "~/drive/msu/spring2019/stat510/run")
+options(scipen = 2, digits = 4)
 ```
+
+```{r}
+library(ggplot2)
+library(magrittr)
+```
+
+
+```{r}
+# Data paths
+YBT_PATH <- "./data/YBT_SCRS.xlsx"
+MUSCLE_DATA_SHEET <- "Muscle data"
+RUNNING_DATA_SHEET <- "Running data"
+UNITS_SHEET <- "Units"
+# MUSCLE_DATA_PATH <- "../data/muscle_data.xlsx"
+
+# muscle data colnames
+legs <- c("r_leg", "l_leg")
+measurements <- c("hip_abd", "hip_ext", "ext_rot", "int_rot")
+metrics <- c("max", "mean")
+units <- c("n", "kgs", "lbs")
+muscle_data_cnames <- c("subject")
+for (l in legs) {
+  for (m in measurements) {
+    for (t in metrics) {
+      for (u in units) {
+        muscle_data_cnames <- c(muscle_data_cnames, paste(l, m, t, u, sep = "_"))
+      }
+    }
+  }
+}
+muscle_data_col_types <- c("text", 
+                           rep("numeric", length(muscle_data_cnames) - 1))
+```
+
+```{r}
+ybt_muscle <- readxl::read_excel(YBT_PATH, 
+                                 sheet = MUSCLE_DATA_SHEET, 
+                                 col_names = muscle_data_cnames,
+                                 col_types = muscle_data_col_types,
+                                 skip = 3)
+ybt_running <- readxl::read_excel(YBT_PATH,
+                                  sheet = RUNNING_DATA_SHEET,
+                                  col_names = TRUE,
+                                  skip = 2)
+```
+
+# Y-balance Metrics
+
+There are three y-balance scores per leg (anterior reach, posterior-lateral reach, and posterior-medial reach), and a composite y-balance score which is derived from these three measurements.
+
+We can plot the component measurements against the composite measurement, after standardizing for leg length.
+
+```{r}
+# y balance scores are likely dependent on height. Normalize by leg length
+ybt_running <- ybt_running %>% 
+  dplyr::mutate(L.A.norm = L.A.meters / L_leg_length,
+                L.PL.norm = L.PL.meters / L_leg_length,
+                L.PM.norm = L.PM.meters / L_leg_length,
+                R.A.norm = R.A.meters / R_leg_length,
+                R.PL.norm = R.PL.meters / R_leg_length,
+                R.PM.norm = R.PM.meters / R_leg_length)
+```
+
+```{r}
+# plot component y-balance against composite after standardizing for leg length
+plot_component_vs_composite_y <- function(data, x, y, x_lbl = "x", y_lbl = "y", title = NULL) {
+  if (is.null(title)) {
+    title = paste(x_lbl, "vs", y_lbl)
+  }
+  p <- ggplot(data, mapping = aes_string(x, y)) +
+    geom_point() +
+    theme_bw() +
+    ylab(y_lbl) +
+    xlab(x_lbl) +
+    labs(title = title)
+  return(p)
+}
+
+component_vs_composite_plots <- list(
+  c("L.A.norm", "L.CS", "Normalized L.A.meters", "L.CS", "Left leg Anterior Reach vs Composite - Normalized"),
+  c("L.PL.norm", "L.CS", "Normalized L.PL.meters", "L.CS", "Left leg Posterior-Lateral vs Composite - Normalized"),
+  c("L.PM.norm", "L.CS", "Normalized L.PM.meters", "L.CS", "Left leg Posterior-Medial vs Composite - Normalized"),
+  c("R.A.norm", "R.CS", "Normalized R.A.meters", "R.CS", "Right leg Anterior Reach vs Composite - Normalized"),
+  c("R.PL.norm", "R.CS", "Normalized R.PL.meters", "R.CS", "Right leg Posterior-Lateral vs Composite - Normalized"),
+  c("R.PM.norm", "R.CS", "Normalized R.PM.meters", "R.CS", "Right leg Posterior-Medial vs Composite - Normalized")
+)
+
+for (cf in component_vs_composite_plots) {
+  p <- plot_component_vs_composite_y(ybt_running, cf[1], cf[2], cf[3], cf[4], cf[5])
+  print(p)
+}
+```
+
+```{r}
+# Get correlation between the normalized scores and non-normailzes scores
+
+```
+
+
+It appears there is a much stronger correlation between the posterior measurements and the composite y-balance score than there is between the anterior measurements and the composite y-balance score.
+
+
+
+
