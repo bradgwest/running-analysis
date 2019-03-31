@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       warning = FALSE,
-                      cache = TRUE,
+                      cache = FALSE,
                       fig.align = 'center')
 knitr::opts_knit$set(root.dir = "~/drive/msu/spring2019/stat510/run")
 options(scipen = 2, digits = 4)
@@ -239,7 +239,9 @@ knitr::kable(
 )
 ```
 
-We see from this table that the posterior medial and posterior lateral measurements together explain over 97% of the variation in the composite score, for these data. In fact, any combination of two variables will explain at least 93% of the variation in composite score for these data. Additionally, the posterior lateral measurement explains over 90% of the variability alone. We can perform model F-tests to compare models for their fit.
+We see from this table that the posterior medial and posterior lateral measurements together explain over 97% of the variation in the composite score, for these data. In fact, any combination of two variables will explain at least 93% of the variation in composite score for these data. Additionally, the posterior lateral measurement explains over 90% of the variability alone.
+
+We can perform model F-tests to compare models for their fit.
 
 ```{r}
 # Compare full model with PM and PL model
@@ -293,6 +295,52 @@ plot(l_a)
 ```
 
 The residual plots get worse and worse as we eliminate factors. None of them are terrible, but there are some potential outliers that make them not look so pretty.
+
+We can also plot the predictions for various models, against the actual results, to visualize how well they align:
+
+```{r}
+make_models_df <- function(models, model_names = c("PM,PL,A", "PM,PL", "PM,A", "PL,A", "PM", "PL", "A")) {
+  as.data.frame(do.call(rbind, lapply(models, predict, newdata = ybt_running, interval = "confidence"))) %>% 
+  mutate(model = rep(model_names, each = nrow(ybt_running)),
+         fit = as.numeric(fit),
+         lwr = as.numeric(lwr),
+         upr = as.numeric(upr),
+         id = rep(1:nrow(ybt_running), times = length(models))) %>%
+  rename(score = fit) %>% 
+  as.tibble()
+}
+
+predicted_score_for_model <- function(data, prefix = "L", error_bars = F) {
+  p <- data %>% 
+    ggplot(aes(x = id, y = score, color = model)) +
+    # geom_point() +
+    geom_jitter(width = 0.1, height = 0) +
+    theme_bw() +
+    xlab("Observation ID") +
+    ylab("Predicted Composite Y-balance Score for Model") +
+    labs(title = paste0("Predicted Score for Model - Leg ", prefix)) +
+    scale_x_continuous(breaks = 1:nrow(ybt_running), minor_breaks = NULL)
+  if (error_bars) {
+    p <- p + geom_errorbar(aes(ymin = lwr, ymax = upr), alpha = 0.5)
+  }
+  print(p)
+}
+
+l_models <- list(l_yb_full, l_pm_pl, l_a_pm, l_a_pl, l_pm, l_pl, l_a)
+r_models <- list(r_yb_full, r_pm_pl, r_a_pm, r_a_pl, r_pm, r_pl, r_a)
+
+# make_models_df(l_models) %>% predicted_score_for_model()
+# make_models_df(r_models) %>% predicted_score_for_model("R")
+
+# Just a subset of models
+make_models_df(list(l_yb_full, l_pm_pl, l_pl), c("PM,PL,A", "PM,PL","PL")) %>% 
+  predicted_score_for_model(error_bars = T)
+
+make_models_df(list(r_yb_full, r_pm_pl, r_pl), c("PM,PL,A", "PM,PL","PL")) %>% 
+  predicted_score_for_model("R", error_bars = T)
+```
+
+As expected, the predictions for the PM & PL model seem fairly decent. Those for the PL only model suffer relative to the two factor model.
 
 # Y-balance and Strength
 
