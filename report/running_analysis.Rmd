@@ -10,7 +10,9 @@ knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       warning = FALSE,
                       cache = FALSE,
-                      fig.align = 'center')
+                      fig.align = 'center',
+                      fig.asp = 9/16,
+                      fig.width = 9)
 knitr::opts_knit$set(root.dir = "~/drive/msu/spring2019/stat510/run")
 options(scipen = 2, digits = 4)
 ```
@@ -193,7 +195,7 @@ These plots indicate a few things:
 We can construct a correlation matrix for both legs:
 
 ```{r}
-# Get correlation between the normalized scores and non-normailzes scores
+# Get correlation matrix
 ybt_running %>% 
   select(L.A.norm, L.PM.norm, L.PL.norm, L.CS, R.A.norm, R.PM.norm, R.PL.norm, R.CS) %>% 
   cor() %>% 
@@ -501,9 +503,12 @@ This is not a random sample of runners, therefore these results only apply to th
 # Further Research/Questions
 
 * Why is the anterior measurement not as useful.
+  + Is it possible that the anterior measurement is being drowned out by the two posterior measurements?
+  + In this case, the composite model might be "biased", and a differently weighted model might be better
+  + But there is also more variability in the anterior measurement
 * Look at strength vs individual measurements.
 * Would be very helpful to get dominant leg differences. It's possible that the seemingly different results that we saw per legs were because of differences in dominant vs non-dominant legs. Would be nice to include that as a predictor.
-* How accurate is the leg length measurement? In some cases the two legs differ in length by over 2cm. Is this realistic, according to (this)[https://orthoinfo.aaos.org/en/diseases--conditions/limb-length-discrepancy/] a leg length difference of 1.5cm is non-normal. 2 subjects had more than this amount of difference, while 5 had more than a cm differnce.
+* How accurate is the leg length measurement? In some cases the two legs differ in length by over 2cm. Is this realistic, according to [this](https://orthoinfo.aaos.org/en/diseases--conditions/limb-length-discrepancy/) a leg length difference of 1.5cm is non-normal. 2 subjects had more than this amount of difference, while 5 had more than a cm differnce.
 
 # Code Appendix
 
