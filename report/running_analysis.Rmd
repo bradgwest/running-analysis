@@ -509,6 +509,7 @@ This is not a random sample of runners, therefore these results only apply to th
 * Look at strength vs individual measurements.
 * Would be very helpful to get dominant leg differences. It's possible that the seemingly different results that we saw per legs were because of differences in dominant vs non-dominant legs. Would be nice to include that as a predictor.
 * How accurate is the leg length measurement? In some cases the two legs differ in length by over 2cm. Is this realistic, according to [this](https://orthoinfo.aaos.org/en/diseases--conditions/limb-length-discrepancy/) a leg length difference of 1.5cm is non-normal. 2 subjects had more than this amount of difference, while 5 had more than a cm differnce.
+* Were the individual y-balance measurements a single measurement, or were they an average of multiple measurements?
 
 # Code Appendix
 
