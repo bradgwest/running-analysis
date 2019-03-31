@@ -450,7 +450,9 @@ r_strength_full <- lm(R.CS ~ Mass + Sex + r_leg_hip_abd_mean_kgs +
 summary(r_strength_full)
 ```
 
-Well, no relation there. Are these even viable models? Let's check.
+For the full models we fit, we can look at the F-tests for overall significance. For the left leg model, the F-statistic is $F_{6,16} = 1.745$ for a p-value of $0.1745$. For the right leg model, the F-statistic is $F_{6,16} = 2.275$ for a p-value of $0.08852$. In the former case there is weak to little evidence that the full model is better than the null hypothesis model. For the latter case there is weak evidence that the full model is better than the null hypothesis model.
+
+Are these even viable models? Let's check.
 
 **Left leg, full model (`L.CS ~ Mass + Sex + l_leg_hip_abd_mean_kgs + l_leg_hip_ext_mean_kgs + l_leg_ext_rot_mean_kgs + l_leg_int_rot_mean_kgs`)**
 ```{r}
@@ -496,10 +498,12 @@ We found that subject strength does not appear to be a useful predictor in model
 
 This is not a random sample of runners, therefore these results only apply to the `r nrow(ybt_running)` subjects in this dataset. Additionally, strength and anatomical qualities cannot be randomly assigned, so had we found any statistically significant results between strength and composite Y-balance scores, we would could not say that differences in Y-balance are caused by differences in strength, only that they are associated.
 
-# Further Research
+# Further Research/Questions
 
 * Why is the anterior measurement not as useful.
 * Look at strength vs individual measurements.
+* Would be very helpful to get dominant leg differences. It's possible that the seemingly different results that we saw per legs were because of differences in dominant vs non-dominant legs. Would be nice to include that as a predictor.
+* How accurate is the leg length measurement? In some cases the two legs differ in length by over 2cm. Is this realistic, according to (this)[https://orthoinfo.aaos.org/en/diseases--conditions/limb-length-discrepancy/] a leg length difference of 1.5cm is non-normal. 2 subjects had more than this amount of difference, while 5 had more than a cm differnce.
 
 # Code Appendix
 
