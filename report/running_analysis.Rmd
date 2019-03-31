@@ -16,6 +16,13 @@ options(scipen = 2, digits = 4)
 ```
 
 ```{r}
+# import and install packages if not already
+needed_packages <- c("tidyverse", "readxl", "RColorBrewer", "knitr", "corrplot")
+new_packages <- needed_packages[!(needed_packages %in% installed.packages()[,"Package"])]
+if (length(new_packages)) {
+ install.packages(new_packages) 
+}
+
 library(tidyverse)
 ```
 
@@ -66,7 +73,7 @@ This research is part of an ongoing study looking at athletic movement screening
 
 > Clinical movement screening tests are gaining popularity as a means to determine injury risk and to implement training programs to prevent sport injury. While these screens are being used readily in the clinical field, it is only recently that some of these have started to gain attention from a research perspective. This limits applicability and poses questions to the validity, and in some cases the reliability, of the clinical movement tests as they relate to injury prediction, intervention, and prevention.
 
-This research specifically looks at how simpler movement screeenings compare to more involved tests, which are known to predict injury. The sample consists of `r nrow(ybt_running)` cross-country runners, `r sum(ybt_running$Sex=='F')` female and  `r sum(ybt_running$Sex=='M')` male. For this analysis, we examine Y-balance, a simple movement screening test that measures balance in three directions. We're interested in examining the relationship of the three component directions on the composite score and the relationship of strength on individual and composite scores. While this analysis focuses solely on those relationships, it is a component part of a broader research question which examines how well Y-balance proxies more involved kinematic and functional movement tests -- tests which are expensive and time consuming in a clinical setting. If Y-balance scores, which are easily measured, are highly predictive of kinematic measurements, then clinicians may save time and money by focusing solely on Y-balance scores. Conversely, if Y-balance scores are poor predictors of kinematic measurements, then clinicians should reasses their decision to use Y-balance scores for determining injury risk.
+This research specifically looks at how simpler movement screenings compare to more involved tests, which are known to predict injury. The sample consists of `r nrow(ybt_running)` cross-country runners, `r sum(ybt_running$Sex=='F')` female and  `r sum(ybt_running$Sex=='M')` male. For this analysis, we examine Y-balance, a simple movement screening test that measures balance in three directions. We're interested in examining the relationship of the three component directions on the composite score and the relationship of strength on individual and composite scores. While this analysis focuses solely on those relationships, it is a component part of a broader research question which examines how well Y-balance proxies more involved kinematic and functional movement tests -- tests which are expensive and time consuming in a clinical setting. If Y-balance scores, which are easily measured, are highly predictive of kinematic measurements, then clinicians may save time and money by focusing solely on Y-balance scores. Conversely, if Y-balance scores are poor predictors of kinematic measurements, then clinicians should reassess their decision to use Y-balance scores for determining injury risk.
 
 [^1]: Chimera, N. J., & Warren, M. (2016). Use of clinical movement screening tests to predict injury in sport. World journal of orthopedics, 7(4), 202–217. doi:10.5312/wjo.v7.i4.202
 
@@ -84,16 +91,16 @@ $$
 YBalanceCS_L = \frac{(A_{L} + PM_{L} + PL_{L})}{3 \times LL_{L}}
 $$
 
-The subscript $L$ refers to the left leg, $LL$ is leg lenth, $CS$ is composite score, $A$ is anterior reach, $PM$ is posterior-medial reach, and $PL$ is posterior lateral reach.
+The subscript $L$ refers to the left leg, $LL$ is leg length, $CS$ is composite score, $A$ is anterior reach, $PM$ is posterior-medial reach, and $PL$ is posterior lateral reach.
 
 # Questions of Interest
 
 This analysis examines two questions of interest:
 
-1. How do the individual y-balance scores relate to eachother and to the composite y-balance score?
+1. How do the individual y-balance scores relate to each other and to the composite y-balance score?
 2. What is the relationship between strength and y-balance scores.
 
-For the first question, if two of the y-balance scores can closely model the composite score, then clinicians can save time by adapting the test. Forthe second score, we wish to examine if y-balance is simply reflecting changes strength.
+For the first question, if two of the y-balance scores can closely model the composite score, then clinicians can save time by adapting the test. For the second score, we wish to examine if y-balance is simply reflecting changes strength.
 
 # Y-Balance -- Individual and Composite
 
@@ -110,6 +117,23 @@ knitr::kable(
  caption = "Distribution of males and females in the study"
 )
 ```
+
+We can also look at the distribution of composite Y-balance scores:
+
+```{r}
+# Distribution of y-balance scores by male and female
+ybt_running %>% 
+  select(Subject, Sex, L.CS, R.CS) %>% 
+  gather(leg, score, -Subject, -Sex) %>% 
+  ggplot(aes(x = score, fill = leg)) +
+  geom_histogram(color = "black") +
+  # geom_dotplot(stat = "count") +
+  theme_bw() +
+  labs(title = "Distribution of Composite Y-balance scores") +
+  xlab("Composite score")
+```
+
+Unfortunately that doesn't look wonderfully normal, but that could certainly be an issue with the small sample size.
 
 ```{r}
 # Normalize the y-balance scores by leg length, creating new variables
@@ -141,15 +165,19 @@ right_ybt_long <- ybt_running %>%
   select(Subject, Sex, R.CS, R.A.norm, R.PL.norm, R.PM.norm) %>% 
   gather(measurement, score, -Subject, -R.CS, -Sex)
 
-individual_vs_composite <- function(data, prefix = "L") {
+individual_vs_composite <- function(data, 
+                                    prefix = "L",
+                                    y_lab = "Composite Y-balance Score (%)",
+                                    x_lab = "Individual Score (Normalized by Leg Length)",
+                                    title = paste0("Composite Y-balance Score by Individual Measurements - Leg ", prefix)) {
   p <- data %>% 
     ggplot(aes(y = data[[paste0(prefix, ".CS")]])) +
     geom_point(aes(x = score, color = measurement)) +
     geom_smooth(aes(x = score, color = measurement), method = lm) +
     theme_bw() +
-    ylab("Composite Y-balance Score (%)") +
-    xlab("Individual Score (Normalized by Leg Length)") +
-    labs(title = paste0("Composite Y-balance Score by Individual Measurements - Leg ", prefix))
+    ylab(y_lab) +
+    xlab(x_lab) +
+    labs(title = title)
  print(p)   
 }
 
@@ -159,8 +187,8 @@ right_ybt_long %>% individual_vs_composite("R")
 
 These plots indicate a few things:
 
-1. It appears that the variablity of a the anterior reach measurments is greater than either of the posterior measurments.
-2. The posterior measurements, perhaps intuitively, appear more highly correlated to eachother than to the anterior measurement.
+1. It appears that the variability of a the anterior reach measurements is greater than either of the posterior measurements.
+2. The posterior measurements, perhaps intuitively, appear more highly correlated to each other than to the anterior measurement.
 
 We can construct a correlation matrix for both legs:
 
@@ -172,11 +200,11 @@ ybt_running %>%
   corrplot::corrplot(method = "number", type = "upper", tl.col = "black", tl.srt = 45)
 ```
 
-Overall there is high collinearity between the predictors. There is a much stronger correlation between the posterior measurements and the composite y-balance score than there is between the anterior measurements and the composite y-balance score. Likewise, there is a much weaker correlation between the anterior measurements and the posterior measurments than between the two posterior measurements, on a per leg basis. There appears to be fairly strong (> 0.8) correlation between the same measurements on opposite legs. In the models we fit, we expect to see high multicolinearity.
+Overall there is high collinearity between the predictors. There is a much stronger correlation between the posterior measurements and the composite y-balance score than there is between the anterior measurements and the composite y-balance score. Likewise, there is a much weaker correlation between the anterior measurements and the posterior measurements than between the two posterior measurements, on a per leg basis. There appears to be fairly strong (> 0.8) correlation between the same measurements on opposite legs. In the models we fit, we expect to see high multicolinearity.
 
 ## Model Fitting
 
-If we fit a model for each leg's composite score using the three individual measurments, we should get a perfect fit since the composite score is deterministic. This means that the R^2^ should be 1:
+If we fit a model for each leg's composite score using the three individual measurements, we should get a perfect fit since the composite score is deterministic. This means that the R^2^ should be 1:
 
 ```{r}
 # Fit full models
@@ -248,7 +276,7 @@ We can perform model F-tests to compare models for their fit.
 anova(l_pm_pl, l_yb_full)
 ```
 
-Of course, since the full model is deterministic (i.e. perfect), we're always going to find evidence that anterior reach contributes to composite Y-balance score. But, this does not prevent us from saying that the PM, PL model alone is stil pretty good at explaining composite Y-balance. Likewise, it seems like PL alone is pretty good as well.
+Of course, since the full model is deterministic (i.e. perfect), we're always going to find evidence that anterior reach contributes to composite Y-balance score. But, this does not prevent us from saying that the PM, PL model alone is still pretty good at explaining composite Y-balance. Likewise, it seems like PL alone is pretty good as well.
 
 For any linear model, we need to examine model diagnostics to confirm that a linear model is appropriate -- that our assumptions have been met.
 
@@ -313,7 +341,6 @@ make_models_df <- function(models, model_names = c("PM,PL,A", "PM,PL", "PM,A", "
 predicted_score_for_model <- function(data, prefix = "L", error_bars = F) {
   p <- data %>% 
     ggplot(aes(x = id, y = score, color = model)) +
-    # geom_point() +
     geom_jitter(width = 0.1, height = 0) +
     theme_bw() +
     xlab("Observation ID") +
@@ -344,15 +371,135 @@ As expected, the predictions for the PM & PL model seem fairly decent. Those for
 
 # Y-balance and Strength
 
+The second question of interest is whether strength has a relationship on Y-balance scores, either the composite or the individual scores. For each leg, strength is measured in four directions and both the max and min strength motion is recorded. The four directions are:
+
+* Hip abduction
+* Hip extension
+* External rotation
+* Internal rotation
+
 ## Exploratory Data Analysis
+
+```{r}
+# Consolidate dataset to what we need (strength measurments in KG, y-balance scores)
+strength_df <- ybt_running %>% 
+  select(Subject, Sex, Mass, L.A.meters, L.PL.meters, L.PM.meters, L.CS, 
+         R.A.meters, R.PL.meters, R.PM.meters, R.CS) %>% 
+  left_join(ybt_muscle %>% 
+              select(subject, r_leg_hip_abd_mean_kgs, r_leg_hip_ext_mean_kgs,
+                     r_leg_ext_rot_mean_kgs, r_leg_int_rot_mean_kgs, 
+                     l_leg_hip_abd_mean_kgs, l_leg_hip_ext_mean_kgs,
+                     l_leg_ext_rot_mean_kgs, l_leg_int_rot_mean_kgs), 
+            by = c("Subject" = "subject"))
+```
+
+For each leg, let's look at the relationship between the four strength measurements and the composite Y-balance:
+
+```{r}
+# Left Leg -- make the dataset long
+left_ybt_strength_long <- strength_df %>% 
+  select(Subject, Sex, Mass, L.CS, l_leg_hip_abd_mean_kgs, l_leg_hip_ext_mean_kgs, 
+         l_leg_ext_rot_mean_kgs, l_leg_int_rot_mean_kgs) %>% 
+  gather(measurement, score, -Subject, -L.CS, -Sex, -Mass)
+
+# Left Leg -- make the dataset long
+right_ybt_strength_long <- strength_df %>% 
+  select(Subject, Sex, Mass, R.CS, r_leg_hip_abd_mean_kgs, r_leg_hip_ext_mean_kgs,
+         r_leg_ext_rot_mean_kgs, r_leg_int_rot_mean_kgs) %>% 
+  gather(measurement, score, -Subject, -R.CS, -Sex, -Mass)
+
+left_ybt_strength_long %>% individual_vs_composite(
+  x_lab = "Strength Score (kgs)", title = "Composite Y-balance by Strength - Leg L"
+)
+right_ybt_strength_long %>% individual_vs_composite(
+  "R", x_lab = "Strength Score (kgs)", title = "Composite Y-balance by Strength - Leg R"
+)
+```
+
+Those are some large confidence intervals. What if we look at strength normalized by size of the runner.
+
+```{r}
+# Scale strength by mass
+left_ybt_strength_long %>% 
+  mutate(score = score/Mass) %>% 
+  individual_vs_composite(
+    x_lab = "Strength Score (kgs)", title = "Composite Y-balance, Strength Scaled by Mass - Leg L"
+  )
+right_ybt_strength_long %>% 
+  mutate(score = score/Mass) %>% 
+  individual_vs_composite(
+    "R", x_lab = "Strength Score (kgs)", title = "Composite Y-balance, Strength Scaled by Mass - Leg R"
+  )
+```
+
+Still some fairly large confidence intervals there. Perhaps some effect, but we should look at building an actual model.
 
 ## Model Fitting
 
-# Scope of Inference and Conclusions
+We can create a linear models that attempts to predict composite Y-balance with the various strength measurements for each of the legs.
+
+```{r}
+l_strength_full <- lm(L.CS ~ Mass + Sex + l_leg_hip_abd_mean_kgs + 
+                        l_leg_hip_ext_mean_kgs + l_leg_ext_rot_mean_kgs + 
+                        l_leg_int_rot_mean_kgs, data = strength_df)
+summary(l_strength_full)
+
+r_strength_full <- lm(R.CS ~ Mass + Sex + r_leg_hip_abd_mean_kgs + 
+                        r_leg_hip_ext_mean_kgs + r_leg_ext_rot_mean_kgs + 
+                        r_leg_int_rot_mean_kgs, data = strength_df)
+summary(r_strength_full)
+```
+
+Well, no relation there. Are these even viable models? Let's check.
+
+**Left leg, full model (`L.CS ~ Mass + Sex + l_leg_hip_abd_mean_kgs + l_leg_hip_ext_mean_kgs + l_leg_ext_rot_mean_kgs + l_leg_int_rot_mean_kgs`)**
+```{r}
+par(mfrow = c(2,2))
+plot(l_strength_full)
+```
+
+**Right leg, full model (`L.CS ~ Mass + Sex + r_leg_hip_abd_mean_kgs + r_leg_hip_ext_mean_kgs + r_leg_ext_rot_mean_kgs + r_leg_int_rot_mean_kgs`)**
+```{r}
+par(mfrow = c(2,2))
+plot(r_strength_full)
+```
+
+There is are some interesting semi-non-linear structures in the residuals vs fitted plot, especially for the right leg. However, they're not horrible. This is likely due to the fact that the composite measurement is continuous, but can't be truly normally distributed, since it's bounded between 0 and 1 since it's really a percentage of leg length.
+
+Let's test this model against a model with no strength measurements.
+
+```{r}
+# Compare nested models
+l_strength_reduced <- lm(L.CS ~ Mass + Sex, data = strength_df)
+r_strength_reduced <- lm(R.CS ~ Mass + Sex, data = strength_df)
+
+anova(l_strength_reduced, l_strength_full)
+anova(r_strength_reduced, r_strength_full)
+```
+
+For the left leg measurements, little to no evidence that strength measurements should be included in the model for composite y-balance score. For the right leg, we have weak to little evidence.
+
+Of course, we need to check model assumptions for the reduced model, but they look pretty good for both models.
+
+```{r}
+# Check assumptions for the reduced model
+par(mfrow = c(2,2))
+plot(l_strength_reduced)
+plot(r_strength_reduced)
+```
+
+# Conclusions and Scope of Inference
+
+Because composite Y-balance score is deterministically modeled by the three individual scores, it presents an interesting challenge. It *is* the perfect model, so eliminating any predictors will yield a statistically worse model. However, we see that removing the Anterior y-balance measurement yields a model that explains 95% of the variability of composite y-balance scores. This is fairly decent and certainly motivates investigation for why the anterior measurement is not as useful.
+
+We found that subject strength does not appear to be a useful predictor in modeling composite Y-balance score. In the future we should examine the relationship between strength and individual Y-balance scores.
+
+This is not a random sample of runners, therefore these results only apply to the `r nrow(ybt_running)` subjects in this dataset. Additionally, strength and anatomical qualities cannot be randomly assigned, so had we found any statistically significant results between strength and composite Y-balance scores, we would could not say that differences in Y-balance are caused by differences in strength, only that they are associated.
 
 # Further Research
 
-* Factor Analysis
+* Why is the anterior measurement not as useful.
+* Look at strength vs individual measurements.
 
 # Code Appendix
 
