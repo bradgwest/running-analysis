@@ -125,6 +125,46 @@ ybt_running <- ybt_running %>%
 ```
 
 ```{r}
+# Consolidate dataset to what we need (strength measurments in KG, y-balance scores)
+strength_df <- ybt_running %>% 
+  select(Subject, Sex, Mass, L.A.norm, L.PL.norm, L.PM.norm, L.CS, 
+         R.A.norm, R.PL.norm, R.PM.norm, R.CS) %>% 
+  left_join(ybt_muscle %>% 
+              select(subject, r_leg_hip_abd_max_kgs, r_leg_hip_ext_max_kgs,
+                     r_leg_ext_rot_max_kgs, r_leg_int_rot_max_kgs, 
+                     l_leg_hip_abd_max_kgs, l_leg_hip_ext_max_kgs,
+                     l_leg_ext_rot_max_kgs, l_leg_int_rot_max_kgs), 
+            by = c("Subject" = "subject"))
+```
+
+```{r}
+ybt_strength_long <- strength_df %>% 
+  mutate(Leg = "Left") %>% 
+  select(Subject, Sex, Leg, Mass, 
+         CS=L.CS,
+         anterior = L.A.norm, 
+         posterior_lateral = L.PL.norm, 
+         posterior_medial = L.PM.norm,
+         external_rotation = l_leg_ext_rot_max_kgs, 
+         internal_rotation = l_leg_int_rot_max_kgs,
+         hip_extension = l_leg_hip_ext_max_kgs,
+         hip_abduction = l_leg_hip_abd_max_kgs) %>%
+  union(
+    strength_df %>% 
+      mutate(Leg = "Right") %>% 
+      select(Subject, Sex, Leg, Mass,
+             CS=R.CS,
+             anterior = R.A.norm, 
+             posterior_lateral = R.PL.norm, 
+             posterior_medial = R.PM.norm,
+             external_rotation = r_leg_ext_rot_max_kgs, 
+             internal_rotation = r_leg_int_rot_max_kgs,
+             hip_extension = r_leg_hip_ext_max_kgs,
+             hip_abduction = r_leg_hip_abd_max_kgs)
+  ) 
+```
+
+```{r}
 bins = 15
 ybt_running %>% 
   select(Subject, Sex, L.CS, R.CS, L.A.norm, L.PL.norm, L.PM.norm, R.A.norm, R.PL.norm, R.PM.norm) %>% 
@@ -159,7 +199,8 @@ ybt_long <- ybt_running %>%
 
 ```{r fig.height=9, fig.width=9}
 # plot individual vs composite y-balance, faceted by measurement
-ybt_long %>% 
+ybt_strength_long %>% 
+  select(-Mass, -external_rotation, -internal_rotation, -hip_extension, -hip_abduction) %>% 
   gather(Measurement, Score, -Subject, -CS, -Sex, -Leg) %>% 
   ggplot(aes(y = CS, color = Leg, shape = Sex)) + 
   geom_point(aes(x = Score)) +
@@ -182,7 +223,8 @@ This plot indicates a few things:
 We're also interested in looking at the relationship of individual measurments to each other. For example, looking at anterior y-balance scores to posterior medial y-balance scores. To do this, we can create a set of plots, faceted by measurments. We can do this in three plots: anterior vs posterior medial, anterior vs posterior lateral, and posterior medial vs posterior lateral.
 
 ```{r fig.width=11, fig.height=11}
-ybt_long %>%
+ybt_strength_long %>%
+  select(-Mass, -external_rotation, -internal_rotation, -hip_extension, -hip_abduction) %>%
   select(-Subject, -CS) %>% 
   GGally::ggpairs(aes(color = Leg, shape = Sex)) +
   theme_bw() +
@@ -194,7 +236,8 @@ ybt_long %>%
 Let's simplify that:
 
 ```{r fig.width=9, fig.height=9}
-ybt_long %>%
+ybt_strength_long %>%
+  select(-Mass, -external_rotation, -internal_rotation, -hip_extension, -hip_abduction) %>%
   select(-Subject, -CS) %>% 
   GGally::ggscatmat(color = "Leg") +
   theme_bw() +
@@ -211,185 +254,159 @@ In this plot, the upper triangle shows the pearson correlations between the two 
 
 # Y-balance and Strength
 
-We also want to investigate the relationship of strength and Y-balance scores. This investigation is being performed by Allison and the rest of the SCRS team, but out of curiosity we would like to explore it too.
+We also want to investigate the relationship of strength and Y-balance scores. This investigation is being performed by Allison and the rest of the SCRS team, but out of curiosity we would like to briefly explore it too.
 
-
-
-The second question of interest is whether strength has a relationship on Y-balance scores, either the composite or the individual scores. For each leg, strength is measured in four directions and both the max and min strength motion is recorded. The four directions are:
+For each leg, strength is measured in four directions and both the max and mean strength motion is recorded. The four directions are:
 
 * Hip abduction
 * Hip extension
 * External rotation
 * Internal rotation
 
-## Exploratory Data Analysis
+For this analysis we use the max strength.
+
+## Distribution of Strength Measurements
 
 ```{r}
-# Consolidate dataset to what we need (strength measurments in KG, y-balance scores)
-strength_df <- ybt_running %>% 
-  select(Subject, Sex, Mass, L.A.meters, L.PL.meters, L.PM.meters, L.CS, 
-         R.A.meters, R.PL.meters, R.PM.meters, R.CS) %>% 
-  left_join(ybt_muscle %>% 
-              select(subject, r_leg_hip_abd_mean_kgs, r_leg_hip_ext_mean_kgs,
-                     r_leg_ext_rot_mean_kgs, r_leg_int_rot_mean_kgs, 
-                     l_leg_hip_abd_mean_kgs, l_leg_hip_ext_mean_kgs,
-                     l_leg_ext_rot_mean_kgs, l_leg_int_rot_mean_kgs), 
-            by = c("Subject" = "subject"))
+# TODO block this by leg
+bins = 15
+strength_df %>% 
+  select(Subject, Sex, r_leg_hip_abd_max_kgs, r_leg_hip_ext_max_kgs, 
+         r_leg_ext_rot_max_kgs, r_leg_int_rot_max_kgs, 
+         l_leg_hip_abd_max_kgs, l_leg_hip_ext_max_kgs,
+         l_leg_ext_rot_max_kgs, l_leg_int_rot_max_kgs) %>% 
+  gather(measurement, score, -Subject, -Sex) %>% 
+  ggplot(aes(x = score)) +
+  geom_histogram(color = "black", bins = bins) +
+  facet_wrap(~measurement) +
+  theme_bw() +
+  labs(title = sprintf("Distribution of Strength Measurments - Bins: %d", bins)) +
+  xlab("Composite score")
 ```
+
+Again, there are aspects of non-normality, but without a larger dataset we're unsure whether this is due to the small sample size or a reflection of the underlying population.
 
 For each leg, let's look at the relationship between the four strength measurements and the composite Y-balance:
 
-```{r}
-# Left Leg -- make the dataset long
-left_ybt_strength_long <- strength_df %>% 
-  select(Subject, Sex, Mass, L.CS, l_leg_hip_abd_mean_kgs, l_leg_hip_ext_mean_kgs, 
-         l_leg_ext_rot_mean_kgs, l_leg_int_rot_mean_kgs) %>% 
-  gather(measurement, score, -Subject, -L.CS, -Sex, -Mass)
-
-# Left Leg -- make the dataset long
-right_ybt_strength_long <- strength_df %>% 
-  select(Subject, Sex, Mass, R.CS, r_leg_hip_abd_mean_kgs, r_leg_hip_ext_mean_kgs,
-         r_leg_ext_rot_mean_kgs, r_leg_int_rot_mean_kgs) %>% 
-  gather(measurement, score, -Subject, -R.CS, -Sex, -Mass)
-
-left_ybt_strength_long %>% individual_vs_composite(
-  x_lab = "Strength Score (kgs)", title = "Composite Y-balance by Strength - Leg L"
-)
-right_ybt_strength_long %>% individual_vs_composite(
-  "R", x_lab = "Strength Score (kgs)", title = "Composite Y-balance by Strength - Leg R"
-)
+```{r fig.height=9, fig.width=9}
+ybt_strength_long %>% 
+  select(-anterior, -posterior_lateral, -posterior_medial) %>% 
+  gather(Measurement, Score, -Subject, -CS, -Sex, -Leg, -Mass) %>% 
+  ggplot(aes(y = CS, color = Leg, shape = Sex)) + 
+  geom_point(aes(x = Score)) +
+  facet_grid(Measurement~.) + 
+  theme_bw() +
+  xlab("Strength Score") +
+  ylab("Composite Y-balance Score") +
+  labs(title = "Composite Y-balance by Strength")
 ```
 
-Those are some large confidence intervals. What if we look at strength normalized by size of the runner.
+It also makes sense to scale by size of the runner as we would expect larger runners to be stronger. We do this by dividing the strength measurement by the runner's mass.
 
-```{r}
-# Scale strength by mass
-left_ybt_strength_long %>% 
-  mutate(score = score/Mass) %>% 
-  individual_vs_composite(
-    x_lab = "Strength Score (kgs)", title = "Composite Y-balance, Strength Scaled by Mass - Leg L"
-  )
-right_ybt_strength_long %>% 
-  mutate(score = score/Mass) %>% 
-  individual_vs_composite(
-    "R", x_lab = "Strength Score (kgs)", title = "Composite Y-balance, Strength Scaled by Mass - Leg R"
-  )
+```{r fig.height=9, fig.width=9}
+ybt_strength_long %>% 
+  select(-anterior, -posterior_lateral, -posterior_medial) %>% 
+  mutate(
+    external_rotation = external_rotation / Mass, 
+    internal_rotation = internal_rotation / Mass,
+    hip_extension = hip_extension / Mass,
+    hip_abduction = hip_abduction / Mass
+  ) %>% 
+  gather(Measurement, Score, -Subject, -CS, -Sex, -Leg, -Mass) %>% 
+  ggplot(aes(y = CS, color = Leg, shape = Sex)) + 
+  geom_point(aes(x = Score)) +
+  facet_grid(Measurement~.) + 
+  theme_bw() +
+  xlab("Strength Score (Scaled by Mass)") +
+  ylab("Composite Y-balance Score") +
+  labs(title = "Composite Y-balance by Strength (Scaled by Mass)")
 ```
 
-Still some fairly large confidence intervals there. Perhaps some effect, but we should look at building an actual model.
+The takeaway from these plots is that it's difficult to discern much of a relationship between strength and composite y-balance. The relationships are not clearly linear, and certainly not strong of any type.
 
-## Model Fitting
-
-We can create a linear models that attempts to predict composite Y-balance with the various strength measurements for each of the legs.
+We can look at strength scores, broken down by the individual measurments, and compared to themselves.
 
 ```{r}
-l_strength_full <- lm(L.CS ~ Mass + Sex + l_leg_hip_abd_mean_kgs + 
-                        l_leg_hip_ext_mean_kgs + l_leg_ext_rot_mean_kgs + 
-                        l_leg_int_rot_mean_kgs, data = strength_df)
-summary(l_strength_full)
-
-r_strength_full <- lm(R.CS ~ Mass + Sex + r_leg_hip_abd_mean_kgs + 
-                        r_leg_hip_ext_mean_kgs + r_leg_ext_rot_mean_kgs + 
-                        r_leg_int_rot_mean_kgs, data = strength_df)
-summary(r_strength_full)
+ybt_strength_long %>%
+  select(-Subject, -CS, -anterior, -posterior_lateral, -posterior_medial) %>% 
+  mutate(
+    external_rotation = external_rotation / Mass, 
+    internal_rotation = internal_rotation / Mass,
+    hip_extension = hip_extension / Mass,
+    hip_abduction = hip_abduction / Mass
+  ) %>% 
+  select(-Mass) %>% 
+  GGally::ggscatmat(color = "Leg") +
+  theme_bw() +
+  xlab("Individual Score (Scaled by Leg Length)") + 
+  ylab("Individual Score") + 
+  labs(title = "Strength by Y-balance Scores")
 ```
 
-For the full models we fit, we can look at the F-tests for overall significance. For the left leg model, the F-statistic is $F_{6,16} = 1.745$ for a p-value of $0.1745$. For the right leg model, the F-statistic is $F_{6,16} = 2.275$ for a p-value of $0.08852$. In the former case there is weak to little evidence that the full model is better than the null hypothesis model. For the latter case there is weak evidence that the full model is better than the null hypothesis model.
-
-Are these even viable models? Let's check.
-
-**Left leg, full model (`L.CS ~ Mass + Sex + l_leg_hip_abd_mean_kgs + l_leg_hip_ext_mean_kgs + l_leg_ext_rot_mean_kgs + l_leg_int_rot_mean_kgs`)**
-```{r}
-par(mfrow = c(2,2))
-plot(l_strength_full)
-```
-
-**Right leg, full model (`L.CS ~ Mass + Sex + r_leg_hip_abd_mean_kgs + r_leg_hip_ext_mean_kgs + r_leg_ext_rot_mean_kgs + r_leg_int_rot_mean_kgs`)**
-```{r}
-par(mfrow = c(2,2))
-plot(r_strength_full)
-```
-
-There is are some interesting semi-non-linear structures in the residuals vs fitted plot, especially for the right leg. However, they're not horrible. This is likely due to the fact that the composite measurement is continuous, but can't be truly normally distributed, since it's bounded between 0 and 1 since it's really a percentage of leg length.
-
-Let's test this model against a model with no strength measurements.
+Finally, we can look at the individual Y-balance scores by strength measurements.
 
 ```{r}
-# Compare nested models
-l_strength_reduced <- lm(L.CS ~ Mass + Sex, data = strength_df)
-r_strength_reduced <- lm(R.CS ~ Mass + Sex, data = strength_df)
-
-anova(l_strength_reduced, l_strength_full)
-anova(r_strength_reduced, r_strength_full)
+ybt_strength_long %>% 
+  mutate(
+    external_rotation = external_rotation / Mass, 
+    internal_rotation = internal_rotation / Mass,
+    hip_extension = hip_extension / Mass,
+    hip_abduction = hip_abduction / Mass
+  ) %>% 
+  select(-Mass, -posterior_lateral, -posterior_medial, -CS) %>% 
+  gather(Measurement, Score, -Subject, -anterior, -Sex, -Leg) %>% 
+  ggplot(aes(y = anterior, color = Leg, shape = Sex)) + 
+  geom_point(aes(x = Score)) +
+  facet_grid(Measurement~.) + 
+  theme_bw() +
+  xlab("Individual Strength Score (Scaled by Leg Length)") +
+  ylab("Anterior Y-balance Score") +
+  labs(title = "Anterior Y-balance Score By Individual Measurement")
 ```
-
-For the left leg measurements, little to no evidence that strength measurements should be included in the model for composite y-balance score. For the right leg, we have weak to little evidence.
-
-Of course, we need to check model assumptions for the reduced model, but they look pretty good for both models.
 
 ```{r}
-# Check assumptions for the reduced model
-par(mfrow = c(2,2))
-plot(l_strength_reduced)
-plot(r_strength_reduced)
+ybt_strength_long %>% 
+  mutate(
+    external_rotation = external_rotation / Mass, 
+    internal_rotation = internal_rotation / Mass,
+    hip_extension = hip_extension / Mass,
+    hip_abduction = hip_abduction / Mass
+  ) %>% 
+  select(-Mass, -anterior, -posterior_medial, -CS) %>% 
+  gather(Measurement, Score, -Subject, -posterior_lateral, -Sex, -Leg) %>% 
+  ggplot(aes(y = posterior_lateral, color = Leg, shape = Sex)) + 
+  geom_point(aes(x = Score)) +
+  facet_grid(Measurement~.) + 
+  theme_bw() +
+  xlab("Individual Strength Score (Scaled by Leg Length)") +
+  ylab("Posterior Lateral Y-balance Score") +
+  labs(title = "Posterior Lateral Y-balance Score By Individual Measurement")
 ```
 
-# Conclusions and Scope of Inference
+```{r}
+ybt_strength_long %>% 
+  mutate(
+    external_rotation = external_rotation / Mass, 
+    internal_rotation = internal_rotation / Mass,
+    hip_extension = hip_extension / Mass,
+    hip_abduction = hip_abduction / Mass
+  ) %>% 
+  select(-Mass, -anterior, -posterior_lateral, -CS) %>% 
+  gather(Measurement, Score, -Subject, -posterior_medial, -Sex, -Leg) %>% 
+  ggplot(aes(y = posterior_medial, color = Leg, shape = Sex)) + 
+  geom_point(aes(x = Score)) +
+  facet_grid(Measurement~.) + 
+  theme_bw() +
+  xlab("Individual Strength Score (Scaled by Leg Length)") +
+  ylab("Posterior Medial Y-balance Score") +
+  labs(title = "Posterior Medial Y-balance Score By Individual Measurement")
+```
 
-Because composite Y-balance score is deterministically modeled by the three individual scores, it presents an interesting challenge. It *is* the perfect model, so eliminating any predictors will yield a statistically worse model. However, we see that removing the Anterior y-balance measurement yields a model that explains 95% of the variability of composite y-balance scores. This is fairly decent and certainly motivates investigation for why the anterior measurement is not as useful.
+# Scope of Inference
 
-We found that subject strength does not appear to be a useful predictor in modeling composite Y-balance score. In the future we should examine the relationship between strength and individual Y-balance scores.
-
-This is not a random sample of runners, therefore these results only apply to the `r nrow(ybt_running)` subjects in this dataset. Additionally, strength and anatomical qualities cannot be randomly assigned, so had we found any statistically significant results between strength and composite Y-balance scores, we would could not say that differences in Y-balance are caused by differences in strength, only that they are associated.
-
-# Further Research/Questions
-
-* Why is the anterior measurement not as useful.
-  + Is it possible that the anterior measurement is being drowned out by the two posterior measurements?
-  + In this case, the composite model might be "biased", and a differently weighted model might be better
-  + But there is also more variability in the anterior measurement
-* Look at strength vs individual measurements.
-* Would be very helpful to get dominant leg differences. It's possible that the seemingly different results that we saw per legs were because of differences in dominant vs non-dominant legs. Would be nice to include that as a predictor.
-* How accurate is the leg length measurement? In some cases the two legs differ in length by over 2cm. Is this realistic, according to [this](https://orthoinfo.aaos.org/en/diseases--conditions/limb-length-discrepancy/) a leg length difference of 1.5cm is non-normal. 2 subjects had more than this amount of difference, while 5 had more than a cm differnce.
-* Were the individual y-balance measurements a single measurement, or were they an average of multiple measurements?
+Despite not fiting any models or drawing conclusions, it's important to mention to which groups we can apply these "results". This is not a random sample of runners, therefore these results only apply to the `r nrow(ybt_running)` subjects in this dataset. Additionally, strength and anatomical qualities cannot be randomly assigned, so any evidence for a relationship between strength and y-balance can only be considered an association, not causal.
 
 # Code Appendix
 
-```{r include=TRUE, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
-```
-
-```{r, include=FALSE}
-# =========
-# NOT USED
-# =========
-# plot component y-balance against composite after standardizing for leg length
-plot_component_vs_composite_y <- function(data, x, y, x_lbl = "x", y_lbl = "y", title = NULL) {
-  if (is.null(title)) {
-    title = paste(x_lbl, "vs", y_lbl)
-  }
-  p <- ggplot(data, mapping = aes_string(x, y)) +
-    geom_point() +
-    theme_bw() +
-    ylab(y_lbl) +
-    xlab(x_lbl) +
-    labs(title = title)
-  return(p)
-}
-
-component_vs_composite_plots <- list(
-  c("L.A.norm", "L.CS", "Normalized L.A.meters", "L.CS", "Left leg Anterior Reach vs Composite - Normalized"),
-  c("L.PL.norm", "L.CS", "Normalized L.PL.meters", "L.CS", "Left leg Posterior-Lateral vs Composite - Normalized"),
-  c("L.PM.norm", "L.CS", "Normalized L.PM.meters", "L.CS", "Left leg Posterior-Medial vs Composite - Normalized"),
-  c("R.A.norm", "R.CS", "Normalized R.A.meters", "R.CS", "Right leg Anterior Reach vs Composite - Normalized"),
-  c("R.PL.norm", "R.CS", "Normalized R.PL.meters", "R.CS", "Right leg Posterior-Lateral vs Composite - Normalized"),
-  c("R.PM.norm", "R.CS", "Normalized R.PM.meters", "R.CS", "Right leg Posterior-Medial vs Composite - Normalized")
-)
-
-for (cf in component_vs_composite_plots) {
-  p <- plot_component_vs_composite_y(ybt_running, cf[1], cf[2], cf[3], cf[4], cf[5])
-  print(p)
-}
-# =============
-# END NOT USED
-# ============
+```{r include=TRUE, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
 ```
